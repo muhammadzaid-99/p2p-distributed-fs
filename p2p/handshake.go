@@ -1,6 +1,8 @@
 package p2p
 
-import "errors"
+import (
+	"errors"
+)
 
 var ErrInvalidHandshake = errors.New("invalid handshake: handshake between local and remote node could not be established")
 
