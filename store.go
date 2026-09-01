@@ -1,15 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"strings"
 )
 
-func CASPathTransformFunc(key string) string {
+func CASPathTransformFunc(key string) PathKey {
 	hash := sha1.Sum([]byte(key))
 	hashstr := hex.EncodeToString(hash[:])
 
@@ -22,10 +24,22 @@ func CASPathTransformFunc(key string) string {
 		paths[i] = hashstr[from:to]
 	}
 
-	return strings.Join(paths, "/")
+	return PathKey{
+		PathName: strings.Join(paths, "/"),
+		Filename: hashstr,
+	}
 }
 
-type PathTransformFunc func(string) string
+type PathTransformFunc func(string) PathKey
+
+type PathKey struct {
+	PathName string
+	Filename string
+}
+
+func (p *PathKey) FullPath() string {
+	return fmt.Sprintf("%s/%s", p.PathName, p.Filename)
+}
 
 func DefaultPathTransformFunc(key string) string {
 	return key
@@ -45,17 +59,34 @@ func NewStore(opts StoreOpts) *Store {
 	}
 }
 
-func (s *Store) writeStream(key string, r io.Reader) error {
-	pathname := s.PathTransformFunc(key)
+func (s *Store) Read(key string) (io.Reader, error) {
+	f, err := s.readStream(key)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
 
-	if err := os.MkdirAll(pathname, os.ModePerm); err != nil {
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, f)
+
+	return buf, err
+}
+
+func (s *Store) readStream(key string) (io.ReadCloser, error) {
+	pathKey := s.PathTransformFunc(key)
+	return os.Open(pathKey.FullPath())
+}
+
+func (s *Store) writeStream(key string, r io.Reader) error {
+	pathKey := s.PathTransformFunc(key)
+
+	if err := os.MkdirAll(pathKey.PathName, os.ModePerm); err != nil {
 		return err
 	}
 
-	filename := "somefilename"
-	filepath := pathname + "/" + filename
+	fullPath := pathKey.FullPath()
 
-	f, err := os.Create(filepath)
+	f, err := os.Create(fullPath)
 	if err != nil {
 		return err
 	}
@@ -65,7 +96,7 @@ func (s *Store) writeStream(key string, r io.Reader) error {
 		return err
 	}
 
-	log.Printf("Written %d bytes to disk: %s", n, filepath)
+	log.Printf("Written %d bytes to disk: %s", n, fullPath)
 
 	return nil
 }
