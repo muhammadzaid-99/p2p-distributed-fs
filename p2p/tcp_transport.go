@@ -23,7 +23,13 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	}
 }
 
-// Implements the Peer interface
+// RemoteAddr implements the Peer interface and returns
+// the remote address of its underlying connection.
+func (p *TCPPeer) RemoteAddr() net.Addr {
+	return p.conn.RemoteAddr()
+}
+
+// Close implements the Peer interface
 func (p *TCPPeer) Close() error {
 	return p.conn.Close()
 }
@@ -48,15 +54,27 @@ func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 	}
 }
 
-// Implements the Transport interface and returns a read-only channel
+// Consume implements the Transport interface and returns a read-only channel
 // to read the incoming messages recieved from another network peer.
 func (t *TCPTransport) Consume() <-chan RPC {
 	return t.rpcch
 }
 
-// Implements the Transport interface
+// Close implements the Transport interface
 func (t *TCPTransport) Close() error {
 	return t.listener.Close()
+}
+
+// Dial implements the Transport interface
+func (t *TCPTransport) Dial(addr string) error {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	go t.handleConn(conn, true)
+
+	return nil
 }
 
 func (t *TCPTransport) ListenAndAccept() error {
@@ -68,7 +86,7 @@ func (t *TCPTransport) ListenAndAccept() error {
 	}
 
 	go t.startAcceptLoop()
-	log.Printf("TCP transport listening on port: %s\n", t.ListenAddr)
+	log.Printf("tcp transport listening on port: %s\n", t.ListenAddr)
 
 	return nil
 }
@@ -80,24 +98,23 @@ func (t *TCPTransport) startAcceptLoop() {
 			return
 		}
 		if err != nil {
-			fmt.Printf("TCP Accept Error: %sn", err)
+			log.Printf("tcp accpet error: %sn", err)
 		}
 
-		fmt.Printf("New Incoming Connection: %+v\n", conn)
-		go t.handleConn(conn)
+		go t.handleConn(conn, false)
 	}
 }
 
-func (t *TCPTransport) handleConn(conn net.Conn) {
+func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 	var err error
 	defer func() {
-		fmt.Printf("Dropping peer connection: %s\n", err)
+		log.Printf("dropping peer connection: %s\n", err)
 		conn.Close()
 	}()
 
-	peer := NewTCPPeer(conn, true)
+	peer := NewTCPPeer(conn, outbound)
 	if err = t.HandshakeFunc(peer); err != nil {
-		fmt.Println("TCP handshake error")
+		log.Println("tcp handshake error")
 		return
 	}
 
@@ -116,7 +133,7 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 		}
 
 		if err != nil {
-			fmt.Printf("TCP read error: %s\n", err)
+			fmt.Printf("tcp read error: %s\n", err)
 			continue
 		}
 
