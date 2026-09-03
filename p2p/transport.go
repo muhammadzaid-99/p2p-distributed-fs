@@ -6,9 +6,6 @@ import "net"
 type Peer interface {
 	Send([]byte) error
 	net.Conn
-	// Conn() net.Conn
-	// RemoteAddr() net.Addr
-	// Close() error
 }
 
 // Transport handles communication between the network nodes which
