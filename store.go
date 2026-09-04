@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -96,17 +95,22 @@ func (s *Store) Delete(key string) error {
 	return os.RemoveAll(s.fromRoot(pathKey.FirstPathName()))
 }
 
+// THIS FUNCTION IS STILL PROBLEMATIC !!!!!
+// Either way, its bad to copy file into buffer, or just hand over
+// the reader to file without closing it.
 func (s *Store) Read(key string) (int64, io.Reader, error) {
-	n, f, err := s.readStream(key)
-	if err != nil {
-		return n, nil, err
-	}
-	defer f.Close()
+	// n, f, err := s.readStream(key)
+	// if err != nil {
+	// 	return n, nil, err
+	// }
+	// defer f.Close()
 
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, f)
+	// buf := new(bytes.Buffer)
+	// _, err = io.Copy(buf, f)
 
-	return n, buf, err
+	// return n, buf, err
+
+	return s.readStream(key)
 }
 
 func (s *Store) Write(key string, r io.Reader) (int64, error) {

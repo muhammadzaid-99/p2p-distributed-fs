@@ -239,6 +239,12 @@ func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error
 		return err
 	}
 
+	// TEMPORARY WORKAROUND...
+	if rc, ok := r.(io.ReadCloser); ok {
+		fmt.Println("closing the file now")
+		defer rc.Close()
+	}
+
 	peer, ok := s.peers[from]
 	if !ok {
 		return fmt.Errorf("peer does not exist %s", peer)
