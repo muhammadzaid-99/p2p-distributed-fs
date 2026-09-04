@@ -79,6 +79,7 @@ func (s *FileServer) broadcast(msg *Message) error {
 	}
 
 	for _, peer := range s.peers {
+		peer.Send([]byte{p2p.MessageIncoming})
 		if err := peer.Send(buf.Bytes()); err != nil {
 			return err
 		}
@@ -117,6 +118,16 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 		return nil, err
 	}
 
+	for _, peer := range s.peers {
+		fileBuffer := new(bytes.Buffer)
+		n, err := io.Copy(fileBuffer, peer)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println("received bytes over the network: ", n)
+		fmt.Println(fileBuffer.String())
+	}
+
 	select {}
 
 	return nil, nil
@@ -142,9 +153,10 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 		return err
 	}
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Millisecond)
 
 	for _, peer := range s.peers {
+		peer.Send([]byte{p2p.StreamIncoming})
 		n, err := io.Copy(peer, fileBuf)
 		if err != nil {
 			return err
@@ -239,7 +251,7 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 	if !ok {
 		return fmt.Errorf("peer %s not found", from)
 	}
-	defer peer.(*p2p.TCPPeer).Wg.Done()
+	defer peer.CloseStream()
 	n, err := s.store.Write(msg.Key, io.LimitReader(peer, msg.Size))
 	if err != nil {
 		return err

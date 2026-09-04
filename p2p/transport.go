@@ -6,6 +6,7 @@ import "net"
 type Peer interface {
 	Send([]byte) error
 	net.Conn
+	CloseStream()
 }
 
 // Transport handles communication between the network nodes which
