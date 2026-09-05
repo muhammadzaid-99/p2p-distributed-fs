@@ -54,7 +54,7 @@ func main() {
 			fmt.Println("Store error", err)
 		}
 
-		if err := s2.store.Delete(key); err != nil {
+		if err := s2.store.Delete(s2.ID, key); err != nil {
 			log.Fatal(err)
 		}
 

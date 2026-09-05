@@ -69,7 +69,6 @@ func NewStore(opts StoreOpts) *Store {
 	if opts.PathTransformFunc == nil {
 		opts.PathTransformFunc = DefaultPathTransformFunc
 	}
-
 	if opts.Root == "" {
 		opts.Root = defaultRootFolderName
 	}
@@ -79,9 +78,9 @@ func NewStore(opts StoreOpts) *Store {
 	}
 }
 
-func (s *Store) Has(key string) bool {
+func (s *Store) Has(id string, key string) bool {
 	pathKey := s.PathTransformFunc(key)
-	_, err := os.Stat(s.fromRoot(pathKey.FullPath()))
+	_, err := os.Stat(s.fromRoot(id, pathKey.FullPath()))
 	return !errors.Is(err, fs.ErrNotExist)
 }
 
@@ -89,16 +88,16 @@ func (s *Store) Clear() error {
 	return os.RemoveAll(s.Root)
 }
 
-func (s *Store) Delete(key string) error {
+func (s *Store) Delete(id string, key string) error {
 	pathKey := s.PathTransformFunc(key)
 	defer log.Printf("deleted %s from disk", pathKey.Filename)
-	return os.RemoveAll(s.fromRoot(pathKey.FirstPathName()))
+	return os.RemoveAll(s.fromRoot(id, pathKey.FirstPathName()))
 }
 
 // THIS FUNCTION IS STILL PROBLEMATIC !!!!!
 // Either way, its bad to copy file into buffer, or just hand over
 // the reader to file without closing it.
-func (s *Store) Read(key string) (int64, io.Reader, error) {
+func (s *Store) Read(id string, key string) (int64, io.Reader, error) {
 	// n, f, err := s.readStream(key)
 	// if err != nil {
 	// 	return n, nil, err
@@ -110,13 +109,13 @@ func (s *Store) Read(key string) (int64, io.Reader, error) {
 
 	// return n, buf, err
 
-	return s.readStream(key)
+	return s.readStream(id, key)
 }
 
-func (s *Store) readStream(key string) (int64, io.ReadCloser, error) {
+func (s *Store) readStream(id string, key string) (int64, io.ReadCloser, error) {
 	pathKey := s.PathTransformFunc(key)
 
-	file, err := os.Open(s.fromRoot(pathKey.FullPath()))
+	file, err := os.Open(s.fromRoot(id, pathKey.FullPath()))
 	if err != nil {
 		return 0, nil, err
 	}
@@ -127,12 +126,12 @@ func (s *Store) readStream(key string) (int64, io.ReadCloser, error) {
 	return fi.Size(), file, nil
 }
 
-func (s *Store) Write(key string, r io.Reader) (int64, error) {
-	return s.writeStream(key, r)
+func (s *Store) Write(id string, key string, r io.Reader) (int64, error) {
+	return s.writeStream(id, key, r)
 }
 
-func (s *Store) WriteDecrypt(encKey []byte, key string, r io.Reader) (int64, error) {
-	f, err := s.openFileForWriting(key)
+func (s *Store) WriteDecrypt(encKey []byte, id string, key string, r io.Reader) (int64, error) {
+	f, err := s.openFileForWriting(id, key)
 	if err != nil {
 		return 0, err
 	}
@@ -142,19 +141,19 @@ func (s *Store) WriteDecrypt(encKey []byte, key string, r io.Reader) (int64, err
 	return int64(n), err
 }
 
-func (s *Store) openFileForWriting(key string) (*os.File, error) {
+func (s *Store) openFileForWriting(id string, key string) (*os.File, error) {
 	pathKey := s.PathTransformFunc(key)
-	pathNameFromRoot := s.fromRoot(pathKey.PathName)
+	pathNameFromRoot := s.fromRoot(id, pathKey.PathName)
 	if err := os.MkdirAll(pathNameFromRoot, os.ModePerm); err != nil {
 		return nil, err
 	}
 
-	fullPathFromRoot := s.fromRoot(pathKey.FullPath())
+	fullPathFromRoot := s.fromRoot(id, pathKey.FullPath())
 	return os.Create(fullPathFromRoot)
 }
 
-func (s *Store) writeStream(key string, r io.Reader) (int64, error) {
-	f, err := s.openFileForWriting(key)
+func (s *Store) writeStream(id string, key string, r io.Reader) (int64, error) {
+	f, err := s.openFileForWriting(id, key)
 	if err != nil {
 		return 0, err
 	}
@@ -163,6 +162,6 @@ func (s *Store) writeStream(key string, r io.Reader) (int64, error) {
 	return io.Copy(f, r)
 }
 
-func (s *Store) fromRoot(path string) string {
-	return fmt.Sprintf("%s/%s", s.Root, path)
+func (s *Store) fromRoot(id string, path string) string {
+	return fmt.Sprintf("%s/%s/%s", s.Root, id, path)
 }

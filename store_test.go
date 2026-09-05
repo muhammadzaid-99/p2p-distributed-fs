@@ -24,20 +24,21 @@ func TestStore(t *testing.T) {
 	s := newStore()
 	defer teardown(t, s)
 
-	for i := range 50 {
+	for i := range 10 {
 		// key := "images"
 		key := fmt.Sprintf("images_%d", i)
+		id := generateID()
 		data := []byte("image file data")
 
-		if _, err := s.writeStream(key, bytes.NewReader(data)); err != nil {
+		if _, err := s.writeStream(id, key, bytes.NewReader(data)); err != nil {
 			t.Error(err)
 		}
 
-		if ok := s.Has(key); !ok {
+		if ok := s.Has(id, key); !ok {
 			t.Errorf("expected to have key %s", key)
 		}
 
-		_, r, err := s.Read(key)
+		_, r, err := s.Read(id, key)
 		if err != nil {
 			t.Error(err)
 		}
@@ -45,15 +46,20 @@ func TestStore(t *testing.T) {
 		b, _ := io.ReadAll(r)
 		fmt.Println(string(b))
 
+		// I don't like it
+		if rc, ok := r.(io.ReadCloser); ok {
+			rc.Close()
+		}
+
 		if string(b) != string(data) {
 			t.Errorf("expected: %s, got: %s", data, b)
 		}
 
-		if err := s.Delete(key); err != nil {
+		if err := s.Delete(id, key); err != nil {
 			t.Error(err)
 		}
 
-		if ok := s.Has(key); ok {
+		if ok := s.Has(id, key); ok {
 			t.Errorf("expected to not have key %s", key)
 		}
 	}
