@@ -224,7 +224,7 @@ func (s *FileServer) handleMessage(from string, msg *Message) error {
 }
 
 func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error {
-	if !s.store.Has(s.ID, msg.Key) {
+	if !s.store.Has(msg.ID, msg.Key) {
 		return fmt.Errorf("requested file %s does not exist on disk of %s", msg.Key, s.Transport.Addr())
 	}
 
