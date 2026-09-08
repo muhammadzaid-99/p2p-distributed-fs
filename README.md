@@ -227,5 +227,5 @@ definitions.
 ## Credit
 
 The architecture of this project follows Anthony GG's
-[Distributed File Storage in Go](https://www.youtube.com/playlist?list=PL0xRBLFXXsP6nudFDqMXzrvQCZrxSOm-2)
+[Distributed File Storage in Go](https://www.youtube.com/watch?v=bymQakvTY40)
 series, built along with and extended while working through it.
